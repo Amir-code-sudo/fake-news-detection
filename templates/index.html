@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fake News Detection</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=8.0">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-row">
+                <h1 id="page-title">Fake News Detection</h1>
+                <div class="header-controls">
+                    <button id="lang-btn" class="icon-btn" title="عربي / English">🌐</button>
+                    <button id="dark-btn" class="icon-btn" title="Dark Mode">🌙</button>
+                </div>
+            </div>
+            <!-- Stats Counter -->
+            <div class="stats-bar" id="stats-bar">
+                <span class="stat-chip" id="stat-total">0 <small data-t="analyzed">analyzed</small></span>
+                <span class="stat-chip real" id="stat-real">0 <small>Real</small></span>
+                <span class="stat-chip fake" id="stat-fake">0 <small>Fake</small></span>
+            </div>
+        </header>
+
+        <main>
+            <!-- Manual Input -->
+            <div class="card" id="input-card">
+                <div class="card-header">
+                    <h2 data-t="analyze_title">Analyze News Article</h2>
+                    <div class="upload-btns">
+                        <label for="csv-upload" class="file-label" data-t="upload_csv">Upload CSV (Retrain)</label>
+                        <input type="file" id="csv-upload" accept=".csv" style="display:none;">
+                        <label for="file-upload" class="file-label">Upload .txt</label>
+                        <input type="file" id="file-upload" accept=".txt" style="display:none;">
+                    </div>
+                </div>
+                <div id="csv-status" class="csv-status hidden"></div>
+                <textarea id="text-input" dir="auto" data-t-placeholder="paste_placeholder" placeholder="Paste a news article here (English or Arabic)..."></textarea>
+                <div class="model-selector">
+                    <label class="selector-label" data-t="select_algo">Select Algorithm:</label>
+                    <div class="model-buttons">
+                        <button class="model-btn" data-model="Naive Bayes">NB<br><small>Naive Bayes</small></button>
+                        <button class="model-btn active" data-model="Logistic Regression">LR<br><small>Logistic Reg.</small></button>
+                        <button class="model-btn" data-model="SVM">SVM<br><small>Support Vector</small></button>
+                        <button class="model-btn" data-model="Random Forest">RF<br><small>Random Forest</small></button>
+                        <button class="model-btn" data-model="Decision Tree">DT<br><small>Decision Tree</small></button>
+                    </div>
+                </div>
+                <div class="action-buttons">
+                    <button id="analyze-btn" class="analyze-btn" data-t="analyze_btn">Analyze Article</button>
+                    <button id="compare-btn" class="compare-btn" data-t="compare_btn">Compare All Models</button>
+                    <button id="batch-btn" class="batch-btn" data-t="batch_btn">Batch Analysis</button>
+                </div>
+            </div>
+
+            <!-- Single Result -->
+            <div id="result-card" class="card result-card hidden">
+                <div class="result-main">
+                    <div id="result-icon" class="result-icon"></div>
+                    <div id="result-badge" class="result-badge real">REAL NEWS</div>
+                    <p class="result-model"><span data-t="classified_by">Classified by</span>: <span id="result-model-name"></span></p>
+                </div>
+                <div class="confidence-section">
+                    <div class="confidence-header">
+                        <span data-t="confidence">Confidence</span>
+                        <span id="confidence-value">0%</span>
+                    </div>
+                    <div class="confidence-track">
+                        <div class="confidence-fill" id="confidence-fill"></div>
+                    </div>
+                </div>
+                <div id="reasons-container" class="reasons-container hidden">
+                    <h4>Why? <small data-t="why_sub">(Words that influenced the decision)</small></h4>
+                    <div id="reasons-list" class="reasons-list"></div>
+                </div>
+                <div class="result-preview" id="result-preview"></div>
+            </div>
+
+            <!-- Compare All Models Result -->
+            <div id="compare-card" class="card hidden">
+                <div class="card-header"><h2 data-t="compare_title">All Models Comparison</h2></div>
+                <div id="compare-results" class="compare-grid"></div>
+            </div>
+
+            <!-- Batch Results -->
+            <div id="batch-card" class="card hidden">
+                <div class="card-header"><h2 data-t="batch_title">Batch Analysis Results</h2></div>
+                <div id="batch-results" class="batch-list"></div>
+            </div>
+
+            <!-- Live News -->
+            <div class="card" id="live-card">
+                <div class="card-header"><h2 data-t="live_title">Live News Feed</h2></div>
+                <div class="live-controls">
+                    <div class="source-buttons">
+                        <button class="source-btn active" data-source="BBC">BBC</button>
+                        <button class="source-btn" data-source="CNN">CNN</button>
+                        <button class="source-btn" data-source="Google News">Google News</button>
+                        <button class="source-btn" data-source="Al Arabiya">Al Arabiya</button>
+                        <button class="source-btn" data-source="BBC Arabic">BBC Arabic</button>
+                    </div>
+                    <button id="fetch-btn" class="fetch-btn" data-t="fetch_btn">Fetch News</button>
+                </div>
+                <div class="custom-url">
+                    <input type="text" id="custom-url" data-t-placeholder="url_placeholder" placeholder="Or paste any news website URL here..." dir="auto">
+                    <button id="fetch-url-btn" class="fetch-url-btn">Fetch</button>
+                </div>
+                <div id="news-list" class="news-list"></div>
+            </div>
+
+            <!-- Dataset Pie Chart -->
+            <div class="card" id="pie-card">
+                <div class="card-header"><h2 data-t="pie_title">Dataset Distribution</h2></div>
+                <div class="chart-container-sm"><canvas id="pieChart"></canvas></div>
+            </div>
+
+            <!-- Charts -->
+            <div class="card" id="chart-card">
+                <div class="card-header"><h2 data-t="acc_title">Model Accuracy Comparison</h2></div>
+                <div class="chart-container"><canvas id="accuracyChart"></canvas></div>
+            </div>
+
+            <div class="card" id="radar-card">
+                <div class="card-header"><h2 data-t="radar_title">Metrics Radar Chart</h2></div>
+                <div class="chart-container"><canvas id="radarChart"></canvas></div>
+            </div>
+
+            <!-- Confusion Matrices -->
+            <div class="card" id="cm-card">
+                <div class="card-header"><h2 data-t="cm_title">Confusion Matrices</h2></div>
+                <div class="cm-grid" id="cm-grid"></div>
+            </div>
+
+            <!-- Keywords -->
+            <div class="card" id="keywords-card">
+                <div class="card-header"><h2 data-t="kw_title">Top Keywords</h2></div>
+                <div id="keywords-content"><p class="loading-text">Loading...</p></div>
+            </div>
+
+            <!-- Metrics Table -->
+            <div class="card" id="table-card">
+                <div class="card-header"><h2 data-t="table_title">Performance Table</h2></div>
+                <div class="table-wrapper">
+                    <table>
+                        <thead><tr>
+                            <th data-t="th_algo">Algorithm</th><th data-t="th_acc">Accuracy</th><th data-t="th_prec">Precision</th>
+                            <th data-t="th_recall">Recall</th><th>F1-Score</th><th>CV Mean</th><th>CV Std</th>
+                        </tr></thead>
+                        <tbody id="metrics-tbody"></tbody>
+                    </table>
+                </div>
+                <div class="dataset-info" id="dataset-info"></div>
+            </div>
+        </main>
+
+        <footer><p>Fake News Detection - ML Project 2026</p></footer>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/script.js') }}?v=8.0" defer></script>
+</body>
+</html>
